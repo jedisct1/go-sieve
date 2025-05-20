@@ -64,35 +64,35 @@ import (
 func main() {
     // Create a new cache with capacity for 100 items
     cache, _ := sievecache.New[string, string](100)
-    
+
     // Insert some items
     cache.Insert("key1", "value1")
     cache.Insert("key2", "value2")
-    
+
     // Get an item
     value, found := cache.Get("key1")
     if found {
         fmt.Println("Found:", value)
     }
-    
+
     // Remove an item
     cache.Remove("key2")
-    
+
     // Check the current cache size
     fmt.Println("Cache size:", cache.Len())
-    
+
     // For thread-safe operations
     syncCache, _ := sievecache.NewSync[string, int](100)
-    
+
     // For high-concurrency applications
     shardedCache, _ := sievecache.NewSharded[string, int](1000)
-    
+
     // The sharded cache can update values with mutator functions
     shardedCache.Insert("counter", 0)
     shardedCache.GetMut("counter", func(value *int) {
         *value++
     })
-    
+
     // Check the current counter value
     counterValue, _ := shardedCache.Get("counter")
     fmt.Println("Counter:", counterValue)
