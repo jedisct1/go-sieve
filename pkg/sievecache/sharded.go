@@ -347,5 +347,3 @@ func (c *ShardedSieveCache[K, V]) RecommendedCapacity(minFactor, maxFactor, lowT
 
 	return max(c.numShards, totalRecommended)
 }
-
-// Using fmt.Sprintf instead of a custom implementation for better reliability
