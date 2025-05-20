@@ -1,7 +1,6 @@
 # SIEVE Cache for Go
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/jedisct1/go-sieve-cache.svg)](https://pkg.go.dev/github.com/jedisct1/go-sieve-cache)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jedisct1/go-sieve-cache)](https://goreportcard.com/report/github.com/jedisct1/go-sieve-cache)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A high-performance Go implementation of the SIEVE cache replacement algorithm with thread-safe and sharded variants.
