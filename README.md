@@ -162,7 +162,7 @@ Parameters:
 
 ## Installation
 
-```bash
+```sh
 go get github.com/jedisct1/go-sieve-cache
 ```
 
