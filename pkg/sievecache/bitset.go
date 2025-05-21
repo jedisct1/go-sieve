@@ -1,5 +1,9 @@
 package sievecache
 
+import (
+	"math/bits"
+)
+
 // BitSet provides a memory-efficient way to store boolean values
 // using 1 bit per value instead of 1 byte per value.
 type BitSet struct {
@@ -23,8 +27,8 @@ func (b *BitSet) Set(index int, value bool) {
 		b.resize(index + 1)
 	}
 
-	wordIndex := index / 64
-	bitIndex := index % 64
+	wordIndex := index >> 6  // Equivalent to index / 64
+	bitIndex := index & 0x3F // Equivalent to index % 64
 
 	if value {
 		b.bits[wordIndex] |= 1 << bitIndex
@@ -39,8 +43,8 @@ func (b *BitSet) Get(index int) bool {
 		return false
 	}
 
-	wordIndex := index / 64
-	bitIndex := index % 64
+	wordIndex := index >> 6  // Equivalent to index / 64
+	bitIndex := index & 0x3F // Equivalent to index % 64
 
 	return (b.bits[wordIndex] & (1 << bitIndex)) != 0
 }
@@ -51,12 +55,21 @@ func (b *BitSet) resize(newSize int) {
 		return
 	}
 
-	// Calculate new number of words needed
-	numWords := (newSize + 63) / 64
+	// Calculate new number of words needed using bit shifting
+	numWords := (newSize + 63) >> 6 // Equivalent to (newSize + 63) / 64
 
 	// If we need more words, extend the slice
 	if numWords > len(b.bits) {
-		newBits := make([]uint64, numWords)
+		// Apply capacity growth strategy similar to Go slices
+		newCap := len(b.bits)
+		if newCap < 4 {
+			newCap = 4
+		}
+		for newCap < numWords {
+			newCap += newCap >> 1 // Grow by 50%
+		}
+
+		newBits := make([]uint64, numWords, newCap)
 		copy(newBits, b.bits)
 		b.bits = newBits
 	}
@@ -75,12 +88,12 @@ func (b *BitSet) Truncate(newSize int) {
 		return
 	}
 
-	// Calculate new number of words needed
-	numWords := (newSize + 63) / 64
+	// Calculate new number of words needed using bit shifting
+	numWords := (newSize + 63) >> 6 // Equivalent to (newSize + 63) / 64
 
 	// Clear any bits in the last word that are beyond the new size
 	if numWords > 0 {
-		lastWordBits := newSize % 64
+		lastWordBits := newSize & 0x3F // Equivalent to newSize % 64
 		if lastWordBits > 0 {
 			// Create a mask for the bits we want to keep
 			mask := (uint64(1) << lastWordBits) - 1
@@ -104,13 +117,9 @@ func (b *BitSet) Size() int {
 
 // CountSetBits returns the number of bits that are set to true.
 func (b *BitSet) CountSetBits() int {
-	count := 0
+	var count int
 	for _, word := range b.bits {
-		// Count the bits in this word using Hamming weight
-		for word != 0 {
-			count++
-			word &= word - 1 // Clear the least significant set bit
-		}
+		count += bits.OnesCount64(word)
 	}
 	return count
 }

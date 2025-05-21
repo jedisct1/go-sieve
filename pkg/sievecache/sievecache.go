@@ -8,17 +8,16 @@ import (
 // SieveCache provides an efficient in-memory cache with the SIEVE eviction algorithm.
 // This is the single-threaded implementation.
 type SieveCache[K comparable, V any] struct {
-	// Map of keys to indices in the nodes slice
+	// Map of keys to indices in the nodes slice (pointer, 8 bytes)
 	indices map[K]int
-	// Slice of all cache nodes
+	// Slice of all cache nodes (pointer + len + cap, 24 bytes)
 	nodes []Node[K, V]
-	// Bit array for visited flags using 1 bit per entry
+	// Bit array for visited flags using 1 bit per entry (pointer, 8 bytes)
 	visited *BitSet
-	// Index to the "hand" pointer used by the SIEVE algorithm for eviction
-	hand int
-	// Maximum number of entries the cache can hold
+	// Grouping integer fields together for better memory alignment (each 8 bytes)
 	capacity int
-	// Flag indicating if the hand pointer is initialized
+	hand     int
+	// Place smaller fields last to minimize padding (bool is 1 byte)
 	handInitialized bool
 }
 
@@ -273,8 +272,11 @@ func (c *SieveCache[K, V]) Evict() (V, bool) {
 
 // Clear removes all entries from the cache.
 func (c *SieveCache[K, V]) Clear() {
+	// Pre-allocate map with capacity hint to avoid rehashing during growth
 	c.indices = make(map[K]int, c.capacity)
+	// Pre-allocate slice with capacity hint to minimize reallocations
 	c.nodes = make([]Node[K, V], 0, c.capacity)
+	// Initialize bit set
 	c.visited = NewBitSet(c.capacity)
 	c.hand = 0
 	c.handInitialized = false
@@ -338,17 +340,21 @@ func (c *SieveCache[K, V]) ForEachValue(f func(v *V)) {
 // Retain only keeps elements specified by the predicate.
 // Removes all entries for which f returns false.
 func (c *SieveCache[K, V]) Retain(f func(k K, v V) bool) {
-	// Estimate number of elements to remove - pre-allocate with a reasonable capacity
-	estimatedRemoveCount := len(c.nodes) / 4 // Assume about 25% will be removed
-	if estimatedRemoveCount < 8 {
-		estimatedRemoveCount = 8 // Minimum size for small caches
+	// Use a more efficient allocation strategy for the removal list
+	nodeCount := len(c.nodes)
+	if nodeCount == 0 {
+		return
 	}
-	if estimatedRemoveCount > 1024 {
-		estimatedRemoveCount = 1024 // Cap at reasonable maximum
+
+	// Start with a small capacity and grow as needed
+	// This avoids over-allocation for large caches with few removals
+	initialCap := min(32, nodeCount/4)
+	if initialCap < 8 {
+		initialCap = 8
 	}
 
 	// Collect indices to remove
-	toRemove := make([]int, 0, estimatedRemoveCount)
+	toRemove := make([]int, 0, initialCap)
 
 	for i, node := range c.nodes {
 		if !f(node.Key, node.Value) {
