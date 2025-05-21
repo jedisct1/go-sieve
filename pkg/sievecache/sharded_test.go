@@ -75,7 +75,9 @@ func TestCustomShardCount(t *testing.T) {
 }
 
 func TestParallelAccess(t *testing.T) {
-	cache, _ := NewShardedWithShards[string, string](1000, 16)
+	// Use a capacity that's a multiple of the number of shards
+	// to ensure each shard has the same capacity
+	cache, _ := NewShardedWithShards[string, string](1600, 16)
 
 	var wg sync.WaitGroup
 
